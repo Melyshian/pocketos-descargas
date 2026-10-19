@@ -1970,7 +1970,7 @@ boton.Click:Connect(function()
     end
 
     print("[HospitalCorazon] Listo: " .. creados .. " creados, " .. actualizados .. " actualizados.")
-    print("[HospitalCorazon] Presiona Play \u25B6 para probar tu juego 🏥")
+    print("[HospitalCorazon] Presiona Play \u{25B6} para probar tu juego 🏥")
 end)
 
 print("[HospitalCorazon] Plugin cargado. Toca 'Instalar todo' en la barra Hospital Corazón.")
