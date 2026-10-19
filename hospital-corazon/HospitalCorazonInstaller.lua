@@ -744,7 +744,7 @@ padsFolder.Parent = mundo
 
 local COLOR_ZONA = {
 	Hospital = {60, 130, 200},
-	McCorazón = {220, 60, 60},
+	["McCorazón"] = {220, 60, 60},
 	Veterinaria = {90, 170, 90},
 	Ciudad = {240, 180, 60},
 	Campo = {120, 180, 70},
@@ -1071,8 +1071,8 @@ local function conectar()
 			prompt.RequiresLineOfSight = false
 			prompt.Parent = puerta
 			prompt.Triggered:Connect(function(player)
-				local dueño = modelo:GetAttribute("Dueño")
-				if dueño == nil then
+				local dueno = modelo:GetAttribute("Dueño")
+				if dueno == nil then
 					-- En venta
 					if esDorada and not State.tienePase(player, Config.GAMEPASS_CASA_ID) then
 						State.aviso(player, "👑 La Casa Dorada necesita el pase VIP (tienda del HUD)")
@@ -1094,7 +1094,7 @@ local function conectar()
 					else
 						State.aviso(player, "💸 Te faltan monedas (cuesta $" .. Config.PRECIO_CASA .. ")")
 					end
-				elseif dueño == player.Name then
+				elseif dueno == player.Name then
 					-- Abrir mi puerta 3 segundos
 					puerta.CanCollide = false
 					task.delay(3, function()
@@ -1102,7 +1102,7 @@ local function conectar()
 					end)
 					State.aviso(player, "🚪 ¡Bienvenido a casa!")
 				else
-					State.aviso(player, "🔒 Esta casa es de " .. dueño)
+					State.aviso(player, "🔒 Esta casa es de " .. dueno)
 				end
 			end)
 		end
@@ -1138,7 +1138,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local State = require(game:GetService("ServerScriptService"):WaitForChild("HospitalState"))
 
--- [indice] = { dueño = UserId|nil, nombre = "", articulo = nil, precio = 0 }
+-- [indice] = { ["dueño"] = UserId|nil, nombre = "", articulo = nil, precio = 0 }
 local puestos = {}
 
 local function textoPuesto(i)
@@ -1150,7 +1150,7 @@ local function textoPuesto(i)
 	if not t then return end
 	local p = puestos[i]
 	if not p then return end
-	if p.dueño == nil then
+	if p["dueño"] == nil then
 		t.Text = "RENTA $500"
 	elseif p.articulo == nil then
 		t.Text = "🎪 " .. p.nombre .. "\n(elige qué vender)"
@@ -1189,7 +1189,7 @@ local function conectar()
 	local folder = mundo:WaitForChild("Puestos")
 	for i = 1, 8 do
 		local modelo = folder:WaitForChild("Puesto" .. i)
-		puestos[i] = { dueño = nil, nombre = "", articulo = nil, precio = 0 }
+		puestos[i] = { ["dueño"] = nil, nombre = "", articulo = nil, precio = 0 }
 		local mesa = modelo:WaitForChild("Mesa")
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Puesto"
@@ -1200,10 +1200,10 @@ local function conectar()
 		prompt.Parent = mesa
 		prompt.Triggered:Connect(function(player)
 			local p = puestos[i]
-			if p.dueño == nil then
+			if p["dueño"] == nil then
 				-- Rentar
 				if State.quitarDinero(player, Config.RENTA_LOCAL) then
-					p.dueño = player.UserId
+					p["dueño"] = player.UserId
 					p.nombre = player.Name
 					textoPuesto(i)
 					State.aviso(player, "🎪 ¡Local rentado! Elige qué vender")
@@ -1211,7 +1211,7 @@ local function conectar()
 				else
 					State.aviso(player, "💸 La renta cuesta $" .. Config.RENTA_LOCAL)
 				end
-			elseif p.dueño == player.UserId then
+			elseif p["dueño"] == player.UserId then
 				if p.articulo == nil then
 					State.getEvent("AbrirMercado"):FireClient(player, i)
 				else
@@ -1225,7 +1225,7 @@ local function conectar()
 				if p.articulo ~= nil then
 					-- Comprar a otro jugador
 					if State.quitarDinero(player, p.precio) then
-						local vendedor = game:GetService("Players"):GetPlayerByUserId(p.dueño)
+						local vendedor = game:GetService("Players"):GetPlayerByUserId(p["dueño"])
 						local gana = math.floor(p.precio * (1 - Config.IMPUESTO_VENTA))
 						if vendedor then
 							State.darDinero(vendedor, gana, "🎪 vendiste " .. p.articulo)
@@ -1250,10 +1250,10 @@ local function conectar()
 	-- El dueño pone artículo + precio desde la ventanita.
 	State.getEvent("PonerVenta").OnServerEvent:Connect(function(player, indice, articulo, precio)
 		local p = puestos[indice]
-		if not p or p.dueño ~= player.UserId then return end
+		if not p or p["dueño"] ~= player.UserId then return end
 		-- Desocupar el local
 		if articulo == "" then
-			puestos[indice] = { dueño = nil, nombre = "", articulo = nil, precio = 0 }
+			puestos[indice] = { ["dueño"] = nil, nombre = "", articulo = nil, precio = 0 }
 			textoPuesto(indice)
 			State.aviso(player, "👋 Local desocupado. ¡Gracias por vender aquí!")
 			return
