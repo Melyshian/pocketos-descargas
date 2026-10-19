@@ -175,8 +175,8 @@ local function checkpointPad(n, pos)
     return c
 end
 
-local function letrero(texto, pos, colorFondo)
-    local p = P({13, 7, 1}, pos, colorFondo or Color3.fromRGB(15, 15, 25), Enum.Material.SmoothPlastic)
+local function letrero(texto, pos, colorFondo, tam)
+    local p = P(tam or {13, 7, 1}, pos, colorFondo or Color3.fromRGB(15, 15, 25), Enum.Material.SmoothPlastic)
     local gui = Instance.new("SurfaceGui")
     gui.Parent = p
     local t = Instance.new("TextLabel")
@@ -204,6 +204,7 @@ spawn.Neutral = true
 spawn.Parent = mundo
 
 letrero("💖 PARKOUR IMPOSIBLE 💖", {0, 11, -26})
+letrero("⭐ Creado por Melyshian ⭐", {0, 4.2, -26}, Color3.fromRGB(90, 20, 60), {10, 3, 1})
 
 -- ---------- grupos de obstáculos ----------
 local function grupoPrecision(x, z, dir, tam, salto, col)
@@ -809,6 +810,49 @@ task.spawn(function()
         local s = math.floor(os.clock() - inicio)
         tiempoLbl.Text = string.format("⏱️ %02d:%02d", math.floor(s / 60), s % 60)
     end
+end)
+
+-- ---------- pantalla de bienvenida ----------
+local splash = Instance.new("ScreenGui")
+splash.Name = "Bienvenida"
+splash.ResetOnSpawn = false
+splash.DisplayOrder = 100
+splash.Parent = jugador:WaitForChild("PlayerGui")
+
+local fondo = Instance.new("Frame")
+fondo.Size = UDim2.new(1, 0, 1, 0)
+fondo.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+fondo.BackgroundTransparency = 0.25
+fondo.Parent = splash
+
+local titulo = Instance.new("TextLabel")
+titulo.Size = UDim2.new(1, 0, 0, 80)
+titulo.Position = UDim2.new(0, 0, 0.35, -40)
+titulo.BackgroundTransparency = 1
+titulo.Text = "💖 PARKOUR IMPOSIBLE 💖"
+titulo.Font = Enum.Font.GothamBold
+titulo.TextSize = 48
+titulo.TextColor3 = Color3.fromRGB(255, 80, 160)
+titulo.Parent = fondo
+
+local creditos = Instance.new("TextLabel")
+creditos.Size = UDim2.new(1, 0, 0, 50)
+creditos.Position = UDim2.new(0, 0, 0.35, 50)
+creditos.BackgroundTransparency = 1
+creditos.Text = "⭐ Creado por Melyshian ⭐"
+creditos.Font = Enum.Font.GothamBold
+creditos.TextSize = 30
+creditos.TextColor3 = Color3.new(1, 1, 1)
+creditos.Parent = fondo
+
+task.delay(4, function()
+    for i = 1, 10 do
+        fondo.BackgroundTransparency = 0.25 + i * 0.075
+        titulo.TextTransparency = i / 10
+        creditos.TextTransparency = i / 10
+        task.wait(0.05)
+    end
+    splash:Destroy()
 end)
 ]===] },
     { archivo = "TiendaGui.luau", nombre = "TiendaGui", clase = "LocalScript",
