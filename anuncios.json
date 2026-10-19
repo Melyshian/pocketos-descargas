@@ -1,0 +1,11 @@
+{
+  "versiones": [
+    {
+      "app": "PocketOS",
+      "version": "6.2",
+      "apk": "pocketos-6.2.apk",
+      "titulo": "¡PocketOS v6.2 ya está aquí!",
+      "texto": "La actualización más grande hasta ahora 💖\n\n**✨ Lo nuevo**\n🐾 Mascota virtual que te acompaña\n🌱 Jardín kawaii que crece con tus hábitos\n✅ Hábitos con rachas\n💧 Agua con rachas\n🍅 Pomodoro + modo enfoque + sonidos ambiente\n📊 Resumen de tu día\n⏰ Recordatorios\n🔍 Búsqueda global en toda la app\n🎓 Tutorial inicial\n🏆 Logros que puedes compartir como imagen\n📅 Contador de eventos + calendario\n✈️ Modo viaje\n🎡 Ruleta de decisiones\n🎲 Verdad o reto (por edades)\n💼 Turnos: Pocket registra tus entradas y salidas\n🌤️ Clima real en tu inicio (tócalo para ver el pronóstico)\n📱 4 widgets nuevos: clima, agua (+250 ml con un toque), tu próximo evento y gastos del mes\n\n**🔧 Arreglado en esta versión**\n✔️ El escáner de cámara ya no se cierra solo\n✔️ El botón \"Nuevo evento\" ya abre su ventana\n✔️ Escribir tu nombre en el perfil ya no se borra ni se traba\n✔️ Si algo falla, la app guarda un reporte en tu carpeta Descargas para revisarlo\n\n**⬇️ Descárgala aquí:**\nhttps://melyshian.github.io/pocketos-descargas/\n\n¿Dudas o quieres un plan? Escríbenos en el servidor 💬\n¡Gracias por ser parte de MelyOS! 💖"
+    }
+  ]
+}
