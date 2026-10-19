@@ -329,6 +329,27 @@ end
 
 local GRUPOS = { gPrecision, gViga, gFantasma, gCuerda, gRebote, gHielo, gMuro, gZigzag, gEscalera, gMixto }
 
+-- ---------- plataformas móviles (te llevan) ----------
+local moviles = {}
+local Players = game:GetService("Players")
+
+local function gMovil(x, z, dir, tam, salto, col)
+    x = x + dir * salto
+    local p = P({5, 1, 5}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
+    table.insert(moviles, {
+        parte = p,
+        centro = Vector3.new(x, 1, z),
+        eje = Vector3.new(0, 0, 1),
+        rango = 8,
+        fase = math.random() * 6.28,
+        velocidad = 1.2,
+    })
+    x = x + dir * (salto + 4)
+    P({tam + 2, 1, tam + 2}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
+    return x
+end
+table.insert(GRUPOS, gMovil)
+
 -- ---------- 4 tiers de dificultad ----------
 local TIERS = {
     { nombre = "FÁCIL 🟢", desde = 1 },
@@ -378,7 +399,7 @@ for n = 1, Config.NUM_NIVELES do
     x = x + dir * 7
     -- 3 grupos distintos por nivel (rotando para no repetir)
     for g = 1, 3 do
-        local f = GRUPOS[((n + g * 3 - 1) % 10) + 1]
+        local f = GRUPOS[((n + g * 3 - 1) % 11) + 1]
         x = f(x, z, dir, tam, salto, colorTema(ti, n + g))
     end
     -- puente al siguiente nivel
@@ -395,6 +416,33 @@ for n = 1, Config.NUM_NIVELES do
 end
 
 print("[ParkourImposible] Mundo construido: " .. Config.NUM_NIVELES .. " niveles, 10 zonas, sin piso 💖")
+
+-- mover plataformas y llevar a los jugadores parados encima
+task.spawn(function()
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    while true do
+        local dt = task.wait(0.05)
+        for _, m in ipairs(moviles) do
+            m.fase = m.fase + dt * m.velocidad
+            local nuevaPos = m.centro + m.eje * (math.sin(m.fase) * m.rango)
+            local delta = nuevaPos - m.parte.Position
+            m.parte.Position = nuevaPos
+            for _, plr in ipairs(Players:GetPlayers()) do
+                local char = plr.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if root and hum and hum.Health > 0 then
+                    params.FilterDescendantsInstances = { char }
+                    local ray = workspace:Raycast(root.Position, Vector3.new(0, -6, 0), params)
+                    if ray and ray.Instance == m.parte then
+                        root.CFrame = root.CFrame + delta
+                    end
+                end
+            end
+        end
+    end
+end)
 ]===] },
     { archivo = "CheckpointSystem.luau", nombre = "CheckpointSystem", clase = "Script",
       servicio = "ServerScriptService", preservar = false,
