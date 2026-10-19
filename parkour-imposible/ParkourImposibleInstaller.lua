@@ -52,7 +52,7 @@ local Config = {}
 Config.ADMIN = "Melyshian"
 
 -- Cantidad de niveles
-Config.NUM_NIVELES = 30
+Config.NUM_NIVELES = 500
 
 -- DataStore donde se guarda el checkpoint de cada jugador
 Config.DATASTORE = "ParkourImposibleV1"
@@ -77,12 +77,14 @@ Config.PASE_SKIP_ID = 0       -- ⏭️ Brinca Nivel (pase)
 Config.PASE_SPEED_ID = 0      -- ⚡ Bobina Veloz (pase)
 Config.PASE_GRAVITY_ID = 0    -- 🌙 Bobina Lunar (pase)
 Config.PRODUCTO_REVIVIR_ID = 0 -- 💖 Revivir (producto)
+Config.PRODUCTO_GIGANTE_ID = 0 -- 🦣 Gigante x5 min (producto)
 
 Config.NOMBRES = {
     skip = "⏭️ Brinca Nivel",
     speed = "⚡ Bobina Veloz",
     gravity = "🌙 Bobina Lunar",
     revivir = "💖 Revivir",
+    gigante = "🦣 Gigante x5 min",
 }
 
 Config.DESCRIPCIONES = {
@@ -90,6 +92,7 @@ Config.DESCRIPCIONES = {
     speed = "Corre rapidísimo con tu bobina neón.",
     gravity = "Salta altísimo con tu bobina lunar.",
     revivir = "Vuelve a tu último checkpoint al instante.",
+    gigante = "Sé gigante 5 minutos más. ¡Que todos te vean!",
 }
 
 return Config
@@ -100,10 +103,9 @@ return Config
 --[[
     ============================================================
     StageBuilder (Script) -> ServerScriptService
-    Construye los 30 niveles del Parkour Imposible:
-    plataformas de precisión, vigas finas, bloques fantasma,
-    plataformas móviles, muros de kill bricks y checkpoints.
-    Estética LLAMATIVA: colores saturados + neón controlado.
+    Construye 500 niveles de parkour IMPOSIBLE pero ganable,
+    sin piso (vacío: caerse = muerte), 10 zonas temáticas,
+    10 tipos de obstáculos variados. Checkpoints cada nivel.
     ============================================================
 ]]
 
@@ -114,13 +116,14 @@ local mundo = Instance.new("Folder")
 mundo.Name = "ParkourImposibleWorld"
 mundo.Parent = workspace
 
--- ---------- base y cielo ----------
+-- ---------- sin piso: vacío ----------
 local base = workspace:FindFirstChild("Baseplate")
-if base and base:IsA("BasePart") then
-    base.Material = Enum.Material.Grass
-    base.Color = Color3.fromRGB(55, 175, 70)
+if base then
+    base:Destroy()
 end
+workspace.FallenPartsDestroyHeight = -50
 
+-- ---------- cielo ----------
 local light = game:GetService("Lighting")
 light.ClockTime = 15
 light.Brightness = 2
@@ -131,11 +134,6 @@ for _, e in ipairs(light:GetChildren()) do
 end
 
 -- ---------- helpers ----------
-local function colorDe(i)
-    local c = Config.COLORES[((i - 1) % #Config.COLORES) + 1]
-    return Color3.fromRGB(c[1], c[2], c[3])
-end
-
 local function P(size, pos, color, mat)
     local p = Instance.new("Part")
     p.Size = Vector3.new(size[1], size[2], size[3])
@@ -187,13 +185,30 @@ local function letrero(texto, pos, colorFondo, tam)
     t.TextScaled = true
     t.TextColor3 = Color3.new(1, 1, 1)
     t.Parent = gui
-    -- postes neón a los lados
-    P({0.8, 9, 0.8}, {pos[1] - 7, pos[2] - 7, pos[3]}, Color3.fromRGB(255, 45, 120), Enum.Material.Neon)
-    P({0.8, 9, 0.8}, {pos[1] + 7, pos[2] - 7, pos[3]}, Color3.fromRGB(255, 45, 120), Enum.Material.Neon)
+    local ancho = (tam and tam[1] or 13)
+    P({0.8, 9, 0.8}, {pos[1] - ancho / 2 - 0.5, pos[2] - 7, pos[3]}, Color3.fromRGB(255, 45, 120), Enum.Material.Neon)
+    P({0.8, 9, 0.8}, {pos[1] + ancho / 2 + 0.5, pos[2] - 7, pos[3]}, Color3.fromRGB(255, 45, 120), Enum.Material.Neon)
     return p
 end
 
--- ---------- spawn invisible ----------
+-- pad de rebote (divertido)
+local function rebotePad(pos)
+    local b = P({4, 0.8, 4}, pos, Color3.fromRGB(255, 200, 40), Enum.Material.Neon)
+    b.Touched:Connect(function(hit)
+        local hum = hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            local root = hit.Parent:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X * 0.5, 95, root.AssemblyLinearVelocity.Z * 0.5)
+            end
+        end
+    end)
+    return b
+end
+
+local hieloFisica = PhysicalProperties.new(0.08, 0.2, 0.5)
+
+-- ---------- spawn ----------
 local spawn = Instance.new("SpawnLocation")
 spawn.Size = Vector3.new(6, 1, 6)
 spawn.Position = Vector3.new(0, 2, -14)
@@ -202,12 +217,33 @@ spawn.Transparency = 1
 spawn.CanCollide = false
 spawn.Neutral = true
 spawn.Parent = mundo
+P({10, 1, 10}, {0, 0.5, -14}, Color3.fromRGB(40, 40, 60), Enum.Material.SmoothPlastic)
 
 letrero("💖 PARKOUR IMPOSIBLE 💖", {0, 11, -26})
 letrero("⭐ Creado por Melyshian ⭐", {0, 4.2, -26}, Color3.fromRGB(90, 20, 60), {10, 3, 1})
 
--- ---------- grupos de obstáculos ----------
-local function grupoPrecision(x, z, dir, tam, salto, col)
+-- ---------- 10 zonas temáticas ----------
+local TEMAS = {
+    { nombre = "ARCOIRIS 🌈", colores = {{255,80,120},{255,160,40},{255,230,60},{80,220,120},{80,160,255},{170,90,255}} },
+    { nombre = "FUEGO 🔥", colores = {{200,40,30},{235,90,20},{250,150,30},{120,25,20},{255,200,80},{180,60,10}} },
+    { nombre = "HIELO ❄️", colores = {{180,230,255},{120,200,250},{220,245,255},{150,180,230},{90,160,220},{200,240,250}} },
+    { nombre = "DULCE 🍭", colores = {{255,150,200},{255,200,220},{200,120,255},{255,120,150},{255,220,240},{180,100,220}} },
+    { nombre = "ESPACIO 🚀", colores = {{40,30,90},{70,40,140},{100,60,200},{30,20,70},{130,90,255},{20,40,120}} },
+    { nombre = "SELVA 🌿", colores = {{30,120,60},{60,160,80},{20,90,50},{120,180,70},{40,140,90},{90,200,100}} },
+    { nombre = "DESIERTO 🏜️", colores = {{230,190,120},{210,160,90},{240,210,140},{190,140,70},{250,230,170},{170,120,60}} },
+    { nombre = "OCEANO 🌊", colores = {{20,100,180},{40,140,220},{10,70,140},{80,180,255},{0,50,110},{120,200,255}} },
+    { nombre = "NEON 💜", colores = {{255,0,200},{0,255,255},{150,0,255},{255,255,0},{0,255,150},{255,0,120}} },
+    { nombre = "LEYENDA 👑", colores = {{255,210,60},{200,160,40},{255,230,120},{150,110,30},{255,240,180},{180,140,50}} },
+}
+
+local function colorTema(ti, i)
+    local c = TEMAS[ti].colores[((i - 1) % 6) + 1]
+    return Color3.fromRGB(c[1], c[2], c[3])
+end
+
+-- ---------- 10 tipos de obstáculos ----------
+-- Cada uno recibe (x, z, dir, tam, salto, col) y regresa el nuevo x.
+local function gPrecision(x, z, dir, tam, salto, col)
     for _ = 1, 3 do
         x = x + dir * salto
         P({tam, 1, tam}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
@@ -215,13 +251,13 @@ local function grupoPrecision(x, z, dir, tam, salto, col)
     return x
 end
 
-local function grupoViga(x, z, dir, col)
+local function gViga(x, z, dir, tam, salto, col)
     x = x + dir * 13
-    P({26, 0.7, 1.4}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
+    P({24, 0.7, 1.6}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
     return x + dir * 13
 end
 
-local function grupoFantasma(x, z, dir, tam, salto, col)
+local function gFantasma(x, z, dir, tam, salto, col)
     for _ = 1, 3 do
         x = x + dir * salto
         local b = P({tam + 1.2, 1, tam + 1.2}, {x, 1, z}, col, Enum.Material.Neon)
@@ -230,113 +266,135 @@ local function grupoFantasma(x, z, dir, tam, salto, col)
     return x
 end
 
-local function grupoMovil(x, z, dir, col)
-    x = x + dir * 15
-    local m = P({4.5, 1, 4.5}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
-    m.Name = "Movil"
-    m:SetAttribute("BaseX", x)
-    m:SetAttribute("BaseZ", z)
-    m:SetAttribute("Rango", 9)
-    return x + dir * 15
+local function gCuerda(x, z, dir, tam, salto, col)
+    x = x + dir * 11
+    P({20, 0.5, 0.8}, {x, 1, z}, col, Enum.Material.Wood)
+    x = x + dir * 11
+    P({0.8, 0.5, 20}, {x, 1, z}, col, Enum.Material.Wood)
+    return x + dir * 11
 end
 
-local function grupoKill(x, z, dir, col)
-    x = x + dir * 9
-    for i = -1, 1 do
-        killBrick({2, 3.2, 2}, {x, 2.1, z + i * 2.4})
-    end
-    x = x + dir * 9
-    P({5, 1, 8}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
+local function gRebote(x, z, dir, tam, salto, col)
+    x = x + dir * salto
+    rebotePad({x, 1, z})
+    x = x + dir * (salto + 6)
+    P({tam + 2, 1, tam + 2}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
     return x
 end
 
-local GRUPOS = {grupoPrecision, grupoViga, grupoFantasma, grupoMovil, grupoKill}
+local function gHielo(x, z, dir, tam, salto, col)
+    for _ = 1, 2 do
+        x = x + dir * salto
+        local b = P({tam + 3, 1, tam + 3}, {x, 1, z}, Color3.fromRGB(180, 230, 255), Enum.Material.Glass)
+        b.CustomPhysicalProperties = hieloFisica
+    end
+    return x
+end
 
--- ---------- construir los 30 niveles (en zigzag) ----------
+local function gMuro(x, z, dir, tam, salto, col)
+    x = x + dir * salto
+    -- muro de kill con hueco en medio para pasar saltando
+    killBrick({10, 5, 1}, {x - 5.5, 3, z})
+    killBrick({10, 5, 1}, {x + 5.5, 3, z})
+    killBrick({22, 1.2, 1}, {x, 6.5, z})
+    P({3.5, 1, 3.5}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
+    return x + dir * salto
+end
+
+local function gZigzag(x, z, dir, tam, salto, col)
+    for i = 1, 4 do
+        x = x + dir * (salto * 0.7)
+        local dz = (i % 2 == 1) and 6 or -6
+        P({tam, 1, tam}, {x, 1, z + dz}, col, Enum.Material.SmoothPlastic)
+    end
+    return x
+end
+
+local function gEscalera(x, z, dir, tam, salto, col)
+    for i = 1, 4 do
+        x = x + dir * 6
+        P({tam + 1, 1, tam + 1}, {x, 1 + i * 2.2, z}, col, Enum.Material.SmoothPlastic)
+    end
+    x = x + dir * salto
+    P({tam + 2, 1, tam + 2}, {x, 1 + 4 * 2.2, z}, col, Enum.Material.SmoothPlastic)
+    return x
+end
+
+local function gMixto(x, z, dir, tam, salto, col)
+    x = gPrecision(x, z, dir, tam, salto, col)
+    x = x + dir * 4
+    x = gViga(x, z, dir, tam, salto, col)
+    return x
+end
+
+local GRUPOS = { gPrecision, gViga, gFantasma, gCuerda, gRebote, gHielo, gMuro, gZigzag, gEscalera, gMixto }
+
+-- ---------- 4 tiers de dificultad ----------
+local TIERS = {
+    { nombre = "FÁCIL 🟢", desde = 1 },
+    { nombre = "MEDIO 🟡", desde = 126 },
+    { nombre = "DIFÍCIL 🔴", desde = 251 },
+    { nombre = "ULTRA DIFÍCIL 💀", desde = 376 },
+}
+local function tierDe(n)
+    if n >= 376 then return 4
+    elseif n >= 251 then return 3
+    elseif n >= 126 then return 2
+    else return 1 end
+end
+
+-- ---------- construir los 500 niveles ----------
 local ESP = 55
-
 for n = 1, Config.NUM_NIVELES do
+    local ti = math.floor((n - 1) / 50) + 1
+    local t = tierDe(n)
+    local prog = (n - TIERS[t].desde) / 125
     local z = (n - 1) * ESP
     local dir = (n % 2 == 1) and 1 or -1
     local xBase = (dir == 1) and 0 or 130
-    local col = colorDe(n)
-    local tam = math.max(1.6, 4.6 - n * 0.1)
-    local salto = math.min(19, 11 + n * 0.28)
+    -- dificultad ganable por tier (siempre posible)
+    local tam, salto
+    if t == 1 then tam = 4.6 - prog * 0.6; salto = 11 + prog * 1
+    elseif t == 2 then tam = 4.0 - prog * 0.8; salto = 12 + prog * 1.5
+    elseif t == 3 then tam = 3.2 - prog * 0.6; salto = 13.5 + prog * 1.5
+    else tam = 2.6 - prog * 0.4; salto = 15 + prog * 1 end
 
-    letrero("NIVEL " .. n, {xBase, 10, z - 11}, col)
+    -- cartel de zona cada 50 niveles
+    if (n - 1) % 50 == 0 then
+        letrero("ZONA: " .. TEMAS[ti].nombre, {xBase, 12, z - 16}, Color3.fromRGB(15, 15, 25), {20, 8, 1})
+    end
+
+    -- cartel de tier al cambiar de dificultad
+    if n == TIERS[t].desde then
+        letrero("DIFICULTAD: " .. TIERS[t].nombre, {xBase, 20, z - 16}, Color3.fromRGB(15, 15, 25), {24, 8, 1})
+    end
+
+    letrero("NIVEL " .. n, {xBase, 10, z - 11}, colorTema(ti, n))
 
     local x = xBase
+    local col = colorTema(ti, n)
     P({7, 1, 7}, {x, 1, z}, col, Enum.Material.SmoothPlastic)
+    checkpointPad(n, {x, 2.2, z})
     x = x + dir * 7
-    for g = 1, 4 do
-        local f = GRUPOS[((n + g - 1) % 5) + 1]
-        if f == grupoPrecision then
-            x = f(x, z, dir, tam, salto, col)
-        elseif f == grupoFantasma then
-            x = f(x, z, dir, tam, salto, col)
-        else
-            x = f(x, z, dir, col)
-        end
+    -- 3 grupos distintos por nivel (rotando para no repetir)
+    for g = 1, 3 do
+        local f = GRUPOS[((n + g * 3 - 1) % 10) + 1]
+        x = f(x, z, dir, tam, salto, colorTema(ti, n + g))
     end
-    x = x + dir * 9
-    checkpointPad(n, {x, 1, z})
-
     -- puente al siguiente nivel
-    if n < Config.NUM_NIVELES then
-        local xBaseSig = ((n + 1) % 2 == 1) and 0 or 130
-        local xMid = (x + xBaseSig) / 2
-        local ancho = math.abs(x - xBaseSig) + 10
-        P({ancho, 1, 7}, {xMid, 1, z + ESP / 2}, Color3.fromRGB(35, 35, 50), Enum.Material.SmoothPlastic)
+    local zSig = n * ESP
+    P({6, 1, 6}, {x, 1, z}, colorTema(ti, n + 4), Enum.Material.SmoothPlastic)
+
+    -- META FINAL: después del nivel 500
+    if n == Config.NUM_NIVELES then
+        local mx = x + dir * 14
+        local meta = P({10, 1.2, 10}, {mx, 1, z}, Color3.fromRGB(255, 210, 60), Enum.Material.Neon)
+        meta.Name = "MetaFinal"
+        letrero("🏆 ¡META FINAL! 🏆", {mx, 11, z - 6}, Color3.fromRGB(120, 90, 10), {18, 8, 1})
     end
 end
 
--- ---------- bloques fantasma: desaparecen al pisarlos ----------
-for _, b in ipairs(mundo:GetDescendants()) do
-    if b.Name == "Fantasma" then
-        local activo = true
-        b.Touched:Connect(function(hit)
-            if not activo then return end
-            local hum = hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
-            activo = false
-            task.delay(0.55, function()
-                b.CanCollide = false
-                b.Transparency = 1
-                task.wait(3)
-                b.CanCollide = true
-                b.Transparency = 0
-                activo = true
-            end)
-        end)
-    end
-end
-
--- ---------- plataformas móviles ----------
-for _, m in ipairs(mundo:GetDescendants()) do
-    if m.Name == "Movil" then
-        local bx = m:GetAttribute("BaseX")
-        local bz = m:GetAttribute("BaseZ")
-        local rango = m:GetAttribute("Rango") or 9
-        local y = m.Position.Y
-        task.spawn(function()
-            local t = math.random() * 20
-            while true do
-                t += task.wait()
-                m.Position = Vector3.new(bx + math.sin(t * 1.1) * rango, y, bz)
-            end
-        end)
-    end
-end
-
--- ---------- slots de decoración (6) ----------
-for i = 1, 6 do
-    local d = P({5, 5, 5}, {160, 8, (i - 1) * 140}, Color3.fromRGB(255, 255, 255), Enum.Material.SmoothPlastic)
-    d.Name = "DECOR_SLOT_" .. i
-    d.Transparency = 0.75
-    d.CanCollide = false
-end
-
-print("[ParkourImposible] Mundo construido: " .. Config.NUM_NIVELES .. " niveles listos ⚡")
+print("[ParkourImposible] Mundo construido: " .. Config.NUM_NIVELES .. " niveles, 10 zonas, sin piso 💖")
 ]===] },
     { archivo = "CheckpointSystem.luau", nombre = "CheckpointSystem", clase = "Script",
       servicio = "ServerScriptService", preservar = false,
@@ -697,6 +755,8 @@ end)
 comprarProducto.OnServerEvent:Connect(function(jugador, cual)
     if cual == "revivir" and Config.PRODUCTO_REVIVIR_ID ~= 0 then
         Marketplace:PromptProductPurchase(jugador, Config.PRODUCTO_REVIVIR_ID)
+    elseif cual == "gigante" and Config.PRODUCTO_GIGANTE_ID ~= 0 then
+        Marketplace:PromptProductPurchase(jugador, Config.PRODUCTO_GIGANTE_ID)
     end
 end)
 
@@ -709,10 +769,173 @@ Marketplace.ProcessReceipt = function(info)
         end
         return Enum.ProductPurchaseDecision.PurchaseGranted
     end
+    if jugador and info.ProductId == Config.PRODUCTO_GIGANTE_ID then
+        local be = ReplicatedStorage:FindFirstChild("GiganteExtra")
+        if be then
+            be:Fire(jugador)
+        end
+        return Enum.ProductPurchaseDecision.PurchaseGranted
+    end
     return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
 print("[ParkourImposible] Monetización lista 💰")
+]===] },
+    { archivo = "GiganteSystem.luau", nombre = "GiganteSystem", clase = "Script",
+      servicio = "ServerScriptService", preservar = false,
+      codigo = [===[
+--[[
+    ============================================================
+    GiganteSystem (Script) -> ServerScriptService
+    El que llega a la MetaFinal se vuelve GIGANTE por 1 minuto.
+    Cola por orden de llegada. Con el producto "Gigante x5 min"
+    se agregan 5 minutos más (solo si eres el gigante actual).
+    ============================================================
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local mundo = workspace:WaitForChild("ParkourImposibleWorld", 30)
+local aviso = ReplicatedStorage:WaitForChild("Aviso")
+
+local eventoExtra = Instance.new("BindableEvent")
+eventoExtra.Name = "GiganteExtra"
+eventoExtra.Parent = ReplicatedStorage
+
+local TIEMPO_GIGANTE = 60
+local TIEMPO_EXTRA = 300
+
+local cola = {}
+local giganteActual = nil
+
+local function hacerGigante(jugador, escala)
+    local char = jugador.Character
+    if not char then
+        return false
+    end
+    local ok = pcall(function()
+        char:ScaleTo(escala)
+    end)
+    if not ok then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                for _, nombre in ipairs({ "BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale" }) do
+                    local v = hum:FindFirstChild(nombre)
+                    if v then
+                        v.Value = escala
+                    end
+                end
+            end)
+        end
+    end
+    return true
+end
+
+local function enCola(userId)
+    if giganteActual and giganteActual.userId == userId then
+        return true
+    end
+    for _, e in ipairs(cola) do
+        if e.userId == userId then
+            return true
+        end
+    end
+    return false
+end
+
+local function procesarCola()
+    if giganteActual then
+        return
+    end
+    local siguiente = table.remove(cola, 1)
+    if not siguiente then
+        return
+    end
+    local jugador = Players:GetPlayerByUserId(siguiente.userId)
+    if not jugador or not jugador.Character then
+        procesarCola()
+        return
+    end
+    hacerGigante(jugador, 3)
+    giganteActual = { jugador = jugador, userId = siguiente.userId, termina = os.clock() + TIEMPO_GIGANTE }
+    aviso:FireAllClients("🏆 " .. jugador.DisplayName .. " llegó a la meta. ¡GIGANTE por 1 minuto!")
+end
+
+-- compra del producto: +5 min si eres el gigante actual
+eventoExtra.Event:Connect(function(jugador)
+    if giganteActual and giganteActual.jugador == jugador then
+        giganteActual.termina = giganteActual.termina + TIEMPO_EXTRA
+        aviso:FireClient(jugador, "🦣 ¡+5 minutos de gigante!")
+    else
+        aviso:FireClient(jugador, "Llega a la meta primero para ser gigante 🦣")
+    end
+end)
+
+-- si el gigante muere o se va, liberar
+Players.PlayerRemoving:Connect(function(jugador)
+    if giganteActual and giganteActual.jugador == jugador then
+        giganteActual = nil
+        procesarCola()
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if giganteActual then
+            local j = giganteActual.jugador
+            local char = j and j.Parent and j.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not hum or hum.Health <= 0 then
+                giganteActual = nil
+                procesarCola()
+            elseif os.clock() >= giganteActual.termina then
+                pcall(function()
+                    char:ScaleTo(1)
+                end)
+                giganteActual = nil
+                aviso:FireAllClients("El gigante volvió a su tamaño normal.")
+                procesarCola()
+            end
+        end
+    end
+end)
+
+-- pad de meta
+local meta = mundo:WaitForChild("MetaFinal", 30)
+if meta and meta:IsA("BasePart") then
+    local debounce = {}
+    meta.Touched:Connect(function(hit)
+        local char = hit.Parent
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not hum then
+            return
+        end
+        local jugador = Players:GetPlayerFromCharacter(char)
+        if not jugador then
+            return
+        end
+        if debounce[jugador.UserId] and os.clock() - debounce[jugador.UserId] < 3 then
+            return
+        end
+        debounce[jugador.UserId] = os.clock()
+        if enCola(jugador.UserId) then
+            aviso:FireClient(jugador, "Ya estás en la cola de gigantes 🏆")
+            return
+        end
+        table.insert(cola, { userId = jugador.UserId })
+        local pos = #cola
+        if pos == 1 and not giganteActual then
+            procesarCola()
+        else
+            aviso:FireClient(jugador, "🏆 ¡Meta! Eres el #" .. pos .. " en la cola de gigantes")
+        end
+    end)
+end
+
+print("[ParkourImposible] GiganteSystem listo 🏆")
 ]===] },
     { archivo = "HudGui.luau", nombre = "HudGui", clase = "LocalScript",
       servicio = "StarterGui", preservar = false,
@@ -881,8 +1104,8 @@ gui.Enabled = false
 gui.Parent = jugador:WaitForChild("PlayerGui")
 
 local ventana = Instance.new("Frame")
-ventana.Size = UDim2.new(0, 340, 0, 400)
-ventana.Position = UDim2.new(0.5, -170, 0.5, -200)
+ventana.Size = UDim2.new(0, 340, 0, 482)
+ventana.Position = UDim2.new(0.5, -170, 0.5, -241)
 ventana.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
 ventana.Parent = gui
 local esq = Instance.new("UICorner")
@@ -910,7 +1133,8 @@ cerrar.Parent = ventana
 local esqC = Instance.new("UICorner")
 esqC.CornerRadius = UDim.new(0, 10)
 esqC.Parent = cerrar
-cerrar.MouseButton1Click:Connect(function()
+cerrar.ZIndex = 10
+cerrar.Activated:Connect(function()
     gui.Enabled = false
 end)
 
@@ -982,6 +1206,7 @@ fila(Config.NOMBRES.skip, Config.DESCRIPCIONES.skip, Config.PASE_SKIP_ID, "pase"
 fila(Config.NOMBRES.speed, Config.DESCRIPCIONES.speed, Config.PASE_SPEED_ID, "pase", "speed")
 fila(Config.NOMBRES.gravity, Config.DESCRIPCIONES.gravity, Config.PASE_GRAVITY_ID, "pase", "gravity")
 fila(Config.NOMBRES.revivir, Config.DESCRIPCIONES.revivir, Config.PRODUCTO_REVIVIR_ID, "producto", "revivir")
+fila(Config.NOMBRES.gigante, Config.DESCRIPCIONES.gigante, Config.PRODUCTO_GIGANTE_ID, "producto", "gigante")
 ]===] },
 }
 
