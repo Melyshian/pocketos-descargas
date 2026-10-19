@@ -36,7 +36,7 @@ end
 
 local ARCHIVOS = {
     { archivo = "Config.luau", nombre = "Config", clase = "ModuleScript",
-      servicio = "ReplicatedStorage", preservar = true,
+      servicio = "ReplicatedStorage", preservar = false,
       codigo = [===[
 --[[
     ============================================================
@@ -117,11 +117,11 @@ mundo.Name = "ParkourImposibleWorld"
 mundo.Parent = workspace
 
 -- ---------- sin piso: vacío ----------
+-- (FallenPartsDestroyHeight se configura en el instalador, no aquí)
 local base = workspace:FindFirstChild("Baseplate")
 if base then
     base:Destroy()
 end
-workspace.FallenPartsDestroyHeight = -50
 
 -- ---------- cielo ----------
 local light = game:GetService("Lighting")
@@ -1298,6 +1298,10 @@ boton.Click:Connect(function()
 
     print("[ParkourImposible] Listo: " .. creados .. " creados, " .. actualizados .. " actualizados.")
     print("[ParkourImposible] Presiona Play ▶ para probar tu juego ⚡")
+    -- el vacío mata rápido (el plugin sí tiene permiso)
+    pcall(function()
+        game:GetService("Workspace").FallenPartsDestroyHeight = -50
+    end)
 end)
 
 print("[ParkourImposible] Plugin cargado. Toca 'Instalar todo' en la barra Parkour Imposible.")
