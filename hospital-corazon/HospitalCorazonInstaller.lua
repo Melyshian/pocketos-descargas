@@ -439,7 +439,7 @@ spawn.Parent = mundo
 local BLANCO = {235, 235, 240}
 local AZULH = {60, 130, 200}
 
-P({72, 2, 46}, {0, 0, -70}, {210, 210, 215}, Enum.Material.Tile) -- piso 1
+P({72, 2, 46}, {0, 0, -70}, {210, 210, 215}, Enum.Material.Marble) -- piso 1
 -- Paredes piso 1 (y 1..9), puerta al frente (x -3..3)
 pared(-19, -48, 32, 1, 8, 1, BLANCO)
 pared(19, -48, 32, 1, 8, 1, BLANCO)
@@ -448,7 +448,7 @@ pared(0, -92, 70, 1, 8, 1, BLANCO)
 pared(-35, -70, 1, 44, 8, 1, BLANCO)
 pared(35, -70, 1, 44, 8, 1, BLANCO)
 -- Piso 2 y techo
-P({72, 1, 46}, {0, 9.5, -70}, {210, 210, 215}, Enum.Material.Tile)
+P({72, 1, 46}, {0, 9.5, -70}, {210, 210, 215}, Enum.Material.Marble)
 pared(0, -48, 70, 1, 8, 10, BLANCO)
 pared(0, -92, 70, 1, 8, 10, BLANCO)
 pared(-35, -70, 1, 44, 8, 10, BLANCO)
@@ -503,7 +503,7 @@ letrero("🔬 QUIRÓFANO", {10, 1.8, 0.6}, {24, 14, -60}, {40, 90, 150})
 -- ============================================================
 -- 🍔 MCCORAZÓN (centro 90, 0, 10 — 24x18)
 -- ============================================================
-P({26, 2, 20}, {90, 0, 10}, {225, 225, 230}, Enum.Material.Tile)
+P({26, 2, 20}, {90, 0, 10}, {225, 225, 230}, Enum.Material.Marble)
 pared(90, 19, 24, 1, 8, 1, {240, 240, 245})
 pared(78, 10, 1, 18, 8, 1, {240, 240, 245})
 pared(102, 10, 1, 18, 8, 1, {240, 240, 245})
@@ -521,7 +521,7 @@ P({3, 1.4, 2}, {94, 1.7, 14}, {90, 90, 95}, Enum.Material.SmoothPlastic)
 -- ============================================================
 -- 🐾 VETERINARIA (centro -90, 0, 10 — 24x18)
 -- ============================================================
-P({26, 2, 20}, {-90, 0, 10}, {225, 225, 230}, Enum.Material.Tile)
+P({26, 2, 20}, {-90, 0, 10}, {225, 225, 230}, Enum.Material.Marble)
 pared(-90, 19, 24, 1, 8, 1, {245, 235, 220})
 pared(-102, 10, 1, 18, 8, 1, {245, 235, 220})
 pared(-78, 10, 1, 18, 8, 1, {245, 235, 220})
@@ -671,7 +671,7 @@ local function casa(nombre, x, z, dorada)
 		p.Parent = m
 		return p
 	end
-	pm({18, 1, 16}, {x, 0.5, z}, {200, 200, 205}, Enum.Material.Tile) -- piso
+	pm({18, 1, 16}, {x, 0.5, z}, {200, 200, 205}, Enum.Material.Marble) -- piso
 	pm( {7, 7, 1}, {x - 5.5, 4.5, z + 8}, colPared) -- frente izq
 	pm( {7, 7, 1}, {x + 5.5, 4.5, z + 8}, colPared) -- frente der
 	pm( {4, 2, 1}, {x, 7, z + 8}, colPared) -- dintel puerta
